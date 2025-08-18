@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
 )
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -13,8 +13,13 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, req *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Add("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	text := "Hits: " + strconv.Itoa(int(cfg.fileserverHits.Load()))
+	text := fmt.Sprintf(`<html>
+  <body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+  </body>
+</html>`, int(cfg.fileserverHits.Load()))
 	w.Write([]byte(text))
 }

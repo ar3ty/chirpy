@@ -11,19 +11,20 @@ type apiConfig struct {
 }
 
 func main() {
-	cuurentDir := "."
+	currentDir := "."
 	port := "8080"
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 	}
 
-	handlerFile := http.StripPrefix("/app", http.FileServer(http.Dir(cuurentDir)))
+	handlerFile := http.StripPrefix("/app", http.FileServer(http.Dir(currentDir)))
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handlerFile))
-	mux.HandleFunc("GET /healthz", handleReadiness)
-	mux.HandleFunc("GET /metrics", apiCfg.handleMetrics)
-	mux.HandleFunc("POST /reset", apiCfg.resetMetrics)
+	mux.HandleFunc("GET /api/healthz", handleReadiness)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handleMetrics)
+	mux.HandleFunc("POST /admin/reset", apiCfg.resetMetrics)
+	mux.HandleFunc("POST /api/validate_chirp", handleChirpValidator)
 
 	server := &http.Server{
 		Handler: mux,
