@@ -18,7 +18,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string, err error) {
 		log.Printf("Responding with %d error: %s\n", code, msg)
 	}
 	errorToSend := errorJSON{
-		Error: msg,
+		Error: msg + ":" + err.Error(),
 	}
 	respondWithJSON(w, code, errorToSend)
 
