@@ -64,7 +64,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	jwtID, err := auth.ValidateJWT(token, cfg.JWTSecret)
+	jwtID, err := auth.ValidateJWT(token, cfg.jwtSecret)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't validate the session", err)
 		return

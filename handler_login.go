@@ -6,13 +6,19 @@ import (
 	"time"
 
 	"github.com/ar3ty/chirpy/internal/auth"
+	"github.com/ar3ty/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	type request struct {
-		Password  string `json:"password"`
-		Email     string `json:"email"`
-		ExpiresIn int    `json:"expires_in_seconds"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+
+	type response struct {
+		User
+		AccessToken  string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	reqToParse := request{}
@@ -22,10 +28,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
-	}
-
-	if reqToParse.ExpiresIn == 0 || reqToParse.ExpiresIn > 3600 {
-		reqToParse.ExpiresIn = 3600
 	}
 
 	user, err := cfg.dbQueries.GetUserByEmail(req.Context(), reqToParse.Email)
@@ -40,17 +42,32 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.JWTSecret, time.Duration(reqToParse.ExpiresIn)*time.Second)
+	accessToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't login", err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+	refreshToken := auth.MakeRefreshToken()
+
+	_, err = cfg.dbQueries.CreateRefreshToken(req.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().UTC().Add(time.Hour * 24 * 30),
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't save refresh token", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	})
 }

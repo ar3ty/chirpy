@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -78,6 +80,16 @@ func GetBearerToken(headers http.Header) (string, error) {
 	if token == "" {
 		return token, errors.New("auth token doesn't exist")
 	}
-	token, _ = strings.CutPrefix(token, "Bearer ")
-	return token, nil
+	splitToken := strings.Split(token, " ")
+	if len(splitToken) != 2 || splitToken[0] != "Bearer" {
+		return "", errors.New("malformed auth header")
+	}
+
+	return splitToken[1], nil
+}
+
+func MakeRefreshToken() string {
+	data := make([]byte, 32)
+	rand.Read(data)
+	return hex.EncodeToString(data)
 }

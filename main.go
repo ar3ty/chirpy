@@ -15,8 +15,8 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
-	Platform       string
-	JWTSecret      string
+	platform       string
+	jwtSecret      string
 }
 
 func main() {
@@ -46,8 +46,8 @@ func main() {
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		dbQueries:      dbQueries,
-		Platform:       platform,
-		JWTSecret:      secret,
+		platform:       platform,
+		jwtSecret:      secret,
 	}
 
 	handlerFile := http.StripPrefix("/app", http.FileServer(http.Dir(currentDir)))
@@ -59,6 +59,8 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
+	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirp)
