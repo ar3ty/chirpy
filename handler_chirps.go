@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ar3ty/chirpy/internal/auth"
 	"github.com/ar3ty/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -52,14 +53,25 @@ func validateChirp(text string) (string, error) {
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
 	type chirpReq struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	chirpParams := chirpReq{}
 
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't authorize the post", err)
+		return
+	}
+
+	jwtID, err := auth.ValidateJWT(token, cfg.JWTSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate the session", err)
+		return
+	}
+
 	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&chirpParams)
+	err = decoder.Decode(&chirpParams)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
@@ -73,7 +85,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 
 	params := database.CreateChirpParams{
 		Body:   cleanedText,
-		UserID: chirpParams.UserID,
+		UserID: jwtID,
 	}
 
 	newChirp, err := cfg.dbQueries.CreateChirp(req.Context(), params)

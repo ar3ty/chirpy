@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ar3ty/chirpy/internal/auth"
+	"github.com/ar3ty/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -13,11 +15,14 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Password  string    `json:"-"`
+	Token     string    `json:"token"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request) {
 	type request struct {
-		Email string `json:"email"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 
 	reqToParse := request{}
@@ -29,7 +34,16 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	user, err := cfg.dbQueries.CreateUser(req.Context(), reqToParse.Email)
+	hashed_password, err := auth.HashPassword(reqToParse.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
+		return
+	}
+
+	user, err := cfg.dbQueries.CreateUser(req.Context(), database.CreateUserParams{
+		Email:          reqToParse.Email,
+		HashedPassword: hashed_password,
+	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
 		return
