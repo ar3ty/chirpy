@@ -93,3 +93,16 @@ func MakeRefreshToken() string {
 	rand.Read(data)
 	return hex.EncodeToString(data)
 }
+
+func GetAPIKey(headers http.Header) (string, error) {
+	apiKey := headers.Get("Authorization")
+	if apiKey == "" {
+		return apiKey, errors.New("apikey doesn't exist")
+	}
+	splitKey := strings.Split(apiKey, " ")
+	if len(splitKey) != 2 || splitKey[0] != "ApiKey" {
+		return "", errors.New("malformed suth header")
+	}
+
+	return splitKey[1], nil
+}
