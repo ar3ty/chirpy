@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -106,11 +107,37 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 }
 
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, req *http.Request) {
-	chirps, err := cfg.dbQueries.GetAllChirps(req.Context())
+	var err error
+	var chirps []database.Chirp
+	order := "asc"
+
+	sortingOrderStr := req.URL.Query().Get("sort")
+	if sortingOrderStr == "desc" {
+		order = sortingOrderStr
+	}
+
+	if author := req.URL.Query().Get("author_id"); author != "" {
+		authorID, parseErr := uuid.Parse(author)
+		if parseErr != nil {
+			respondWithError(w, http.StatusBadRequest, "Couldn't parse id", parseErr)
+			return
+		}
+		chirps, err = cfg.dbQueries.GetChirpsByAuthorID(req.Context(), authorID)
+	} else {
+		chirps, err = cfg.dbQueries.GetAllChirps(req.Context())
+	}
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
 		return
 	}
+
+	sort.Slice(chirps, func(i, j int) bool {
+		if order == "desc" {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		} else {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		}
+	})
 
 	response := []Chirp{}
 	for _, item := range chirps {
